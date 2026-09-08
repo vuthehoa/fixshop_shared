@@ -21,7 +21,8 @@ class DeleteEmployeeUseCase extends UseCase<void, DeleteEmployeeParams> {
     )) {
       return Future.value(
         const Left(
-          OperationNotAllowedFailure('You do not have permission to delete employees.'),
+          OperationNotAllowedFailure(
+              'You do not have permission to delete employees.'),
         ),
       );
     }

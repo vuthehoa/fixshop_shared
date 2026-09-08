@@ -25,15 +25,19 @@ class NetworkFailure extends Failure {
 }
 
 class UserDisabledFailure extends Failure {
-  const UserDisabledFailure() : super('Your account has been deactivated. Please contact your administrator.');
+  const UserDisabledFailure()
+      : super(
+            'Your account has been deactivated. Please contact your administrator.');
 }
 
 class RequiresRecentLoginFailure extends Failure {
-  const RequiresRecentLoginFailure() : super('Please sign in again to perform this action.');
+  const RequiresRecentLoginFailure()
+      : super('Please sign in again to perform this action.');
 }
 
 class EmailNotVerifiedFailure extends Failure {
-  const EmailNotVerifiedFailure() : super('Please verify your email before continuing.');
+  const EmailNotVerifiedFailure()
+      : super('Please verify your email before continuing.');
 }
 
 class CacheFailure extends Failure {
@@ -54,4 +58,28 @@ class DuplicateEmailFailure extends Failure {
 
 class OperationNotAllowedFailure extends Failure {
   const OperationNotAllowedFailure(super.message);
+}
+
+class DuplicateCodeFailure extends Failure {
+  const DuplicateCodeFailure(super.message);
+}
+
+class DuplicatePhoneFailure extends Failure {
+  const DuplicatePhoneFailure(super.message);
+}
+
+class DuplicateSerialNumberFailure extends Failure {
+  const DuplicateSerialNumberFailure(super.message);
+}
+
+class DuplicateImeiFailure extends Failure {
+  const DuplicateImeiFailure(super.message);
+}
+
+class HasActiveChildrenFailure extends Failure {
+  const HasActiveChildrenFailure(super.message);
+}
+
+class CatalogValidationFailure extends Failure {
+  const CatalogValidationFailure(super.message);
 }

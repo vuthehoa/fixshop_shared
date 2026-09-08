@@ -25,4 +25,9 @@ enum Permission {
   completeRepairOrder,
   viewReports,
   manageSystemSettings,
+  // Existing CMS references; declaration alone grants no non-admin rights.
+  manageWarranty,
+  cancelRepairOrder,
+  viewNotifications,
+  sendNotifications,
 }

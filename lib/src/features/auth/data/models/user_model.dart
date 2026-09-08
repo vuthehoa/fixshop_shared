@@ -70,10 +70,12 @@ class UserModel extends UserEntity {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'address': address,
-      'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth!) : null,
+      'dateOfBirth':
+          dateOfBirth != null ? Timestamp.fromDate(dateOfBirth!) : null,
       'gender': gender,
       'createdBy': createdBy,
-      'lastLoginAt': lastLoginAt != null ? Timestamp.fromDate(lastLoginAt!) : null,
+      'lastLoginAt':
+          lastLoginAt != null ? Timestamp.fromDate(lastLoginAt!) : null,
     };
   }
 
@@ -84,7 +86,8 @@ class UserModel extends UserEntity {
       'phoneNumber': phoneNumber,
       'role': role.name,
       'address': address,
-      'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth!) : null,
+      'dateOfBirth':
+          dateOfBirth != null ? Timestamp.fromDate(dateOfBirth!) : null,
       'gender': gender,
       'updatedAt': FieldValue.serverTimestamp(),
     };

@@ -7,12 +7,14 @@ abstract final class PermissionResolver {
     return RolePermissions.of(role).contains(permission);
   }
 
-  static bool hasAnyPermission(UserRole role, Iterable<Permission> permissions) {
+  static bool hasAnyPermission(
+      UserRole role, Iterable<Permission> permissions) {
     final granted = RolePermissions.of(role);
     return permissions.any(granted.contains);
   }
 
-  static bool hasAllPermissions(UserRole role, Iterable<Permission> permissions) {
+  static bool hasAllPermissions(
+      UserRole role, Iterable<Permission> permissions) {
     final granted = RolePermissions.of(role);
     return permissions.every(granted.contains);
   }

@@ -24,7 +24,8 @@ abstract class EmployeeRepository {
 
   Future<Either<Failure, void>> deleteEmployee(String id);
 
-  Future<Either<Failure, void>> updateEmployeeStatus(String id, UserStatus status);
+  Future<Either<Failure, void>> updateEmployeeStatus(
+      String id, UserStatus status);
 
   Future<Either<Failure, void>> resetEmployeePassword(String email);
 }

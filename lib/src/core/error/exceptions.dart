@@ -1,6 +1,7 @@
 class ServerException implements Exception {
   final String message;
-  const ServerException([this.message = 'An unexpected server error occurred.']);
+  const ServerException(
+      [this.message = 'An unexpected server error occurred.']);
 }
 
 class AuthException implements Exception {
@@ -22,12 +23,14 @@ class EmailNotVerifiedException implements Exception {
 
 class UnauthorizedRoleException implements Exception {
   final String message;
-  const UnauthorizedRoleException([this.message = 'Access denied for this role.']);
+  const UnauthorizedRoleException(
+      [this.message = 'Access denied for this role.']);
 }
 
 class NetworkException implements Exception {
   final String message;
-  const NetworkException([this.message = 'Network error. Please check your connection.']);
+  const NetworkException(
+      [this.message = 'Network error. Please check your connection.']);
 }
 
 class CacheException implements Exception {
@@ -47,10 +50,42 @@ class NotFoundException implements Exception {
 
 class DuplicateEmailException implements Exception {
   final String message;
-  const DuplicateEmailException([this.message = 'An account with this email already exists.']);
+  const DuplicateEmailException(
+      [this.message = 'An account with this email already exists.']);
 }
 
 class OperationNotAllowedException implements Exception {
   final String message;
-  const OperationNotAllowedException([this.message = 'This operation is not allowed.']);
+  const OperationNotAllowedException(
+      [this.message = 'This operation is not allowed.']);
+}
+
+class DuplicateCodeException implements Exception {
+  final String message;
+  const DuplicateCodeException(this.message);
+}
+
+class DuplicatePhoneException implements Exception {
+  final String message;
+  const DuplicatePhoneException(this.message);
+}
+
+class DuplicateSerialNumberException implements Exception {
+  final String message;
+  const DuplicateSerialNumberException(this.message);
+}
+
+class DuplicateImeiException implements Exception {
+  final String message;
+  const DuplicateImeiException(this.message);
+}
+
+class HasActiveChildrenException implements Exception {
+  final String message;
+  const HasActiveChildrenException(this.message);
+}
+
+class CatalogValidationException implements Exception {
+  final String message;
+  const CatalogValidationException(this.message);
 }

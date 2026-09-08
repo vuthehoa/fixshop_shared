@@ -8,12 +8,18 @@ enum UserRole {
   customer;
 
   bool get isCmsUser =>
-      this == admin || this == manager || this == reception || this == technician;
+      this == admin ||
+      this == manager ||
+      this == reception ||
+      this == technician;
 
   bool get canManageEmployees => this == admin || this == manager;
 
   bool get canManageRepairs =>
-      this == admin || this == manager || this == reception || this == technician;
+      this == admin ||
+      this == manager ||
+      this == reception ||
+      this == technician;
 
   String get displayName => switch (this) {
         UserRole.admin => 'Quản trị viên',

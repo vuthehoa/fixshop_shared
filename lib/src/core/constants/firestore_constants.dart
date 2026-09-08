@@ -28,4 +28,7 @@ abstract final class FirestoreConstants {
 
   // ── Audit trail (written by Cloud Functions only) ─────────────────────────
   static const String activityLogs = 'activity_logs';
+  static const String manufacturers = 'manufacturers';
+  static const String products = 'products';
+  static const String serviceCategories = 'service_categories';
 }

@@ -64,9 +64,8 @@ class FirebaseEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
     }
 
     final snapshot = await query.get();
-    final models = snapshot.docs
-        .map((doc) => UserModel.fromFirestore(doc))
-        .toList();
+    final models =
+        snapshot.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
 
     // Client-side text search (Firestore has no native full-text search)
     final filtered =
@@ -81,8 +80,7 @@ class FirebaseEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
 
     return PaginatedResult(
       items: filtered,
-      lastDocument:
-          snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+      lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
       hasMore: snapshot.docs.length == filter.pageSize,
     );
   }
@@ -111,7 +109,8 @@ class FirebaseEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
           'An account with email "$email" already exists.',
         );
       }
-      throw AuthException(e.message ?? 'Failed to create Firebase Auth account.');
+      throw AuthException(
+          e.message ?? 'Failed to create Firebase Auth account.');
     } finally {
       await secondaryAuth.signOut();
     }
@@ -164,7 +163,8 @@ class FirebaseEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
   Future<UserModel> updateEmployee(UserModel employee) async {
     await _users.doc(employee.id).update(employee.toUpdateMap());
     final doc = await _users.doc(employee.id).get();
-    if (!doc.exists) throw NotFoundException('Employee not found after update.');
+    if (!doc.exists)
+      throw NotFoundException('Employee not found after update.');
     return UserModel.fromFirestore(doc);
   }
 

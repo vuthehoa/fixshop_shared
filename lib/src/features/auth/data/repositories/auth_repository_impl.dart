@@ -12,7 +12,8 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._remoteDataSource);
 
   @override
-  Stream<UserEntity?> get authStateChanges => _remoteDataSource.authStateChanges;
+  Stream<UserEntity?> get authStateChanges =>
+      _remoteDataSource.authStateChanges;
 
   @override
   Future<Either<Failure, UserEntity>> signInWithEmailAndPassword({

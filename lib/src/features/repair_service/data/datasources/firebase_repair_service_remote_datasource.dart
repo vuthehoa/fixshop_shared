@@ -3,8 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/paginated_result.dart';
+import '../../../activity_log/data/models/activity_log_model.dart';
+import '../../../activity_log/domain/entities/activity_log_entity.dart';
 import '../../../catalog_common/domain/enums/catalog_status.dart';
+import '../../domain/services/catalog_eligibility.dart';
 import '../../domain/value_objects/repair_service_filter.dart';
+import '../../domain/value_objects/repair_service_write_context.dart';
+import '../models/catalog_eligibility_model.dart';
 import '../models/repair_service_model.dart';
 import 'repair_service_remote_datasource.dart';
 
@@ -17,6 +22,15 @@ class FirebaseRepairServiceRemoteDataSource
 
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection(FirestoreConstants.repairServices);
+
+  /// `catalog_eligibility/{serviceId}` — written in the SAME batch /
+  /// transaction as EVERY `repair_services` write below (create, update,
+  /// archive, restore). Firestore Rules reject a service write without it.
+  CollectionReference<Map<String, dynamic>> get _eligibility =>
+      _firestore.collection(FirestoreConstants.catalogEligibility);
+
+  CollectionReference<Map<String, dynamic>> get _activityLogs =>
+      _firestore.collection(FirestoreConstants.activityLogs);
 
   @override
   Future<RepairServiceModel> getRepairService(String id) async {
@@ -88,7 +102,9 @@ class FirebaseRepairServiceRemoteDataSource
 
   @override
   Future<RepairServiceModel> createRepairService(
-      RepairServiceModel entity) async {
+    RepairServiceModel entity, {
+    RepairServiceWriteContext context = const RepairServiceWriteContext(),
+  }) async {
     _ensureValid(entity);
     await _ensureUniqueModelPerCategory(entity.categoryId, entity.modelId);
 
@@ -109,13 +125,21 @@ class FirebaseRepairServiceRemoteDataSource
       createdBy: entity.createdBy,
     );
 
-    await ref.set(created.toFirestore());
+    final batch = _firestore.batch();
+    batch.set(ref, created.toFirestore());
+    batch.set(
+      _eligibility.doc(ref.id),
+      CatalogEligibilityModel.fromService(created, source: context.source),
+    );
+    await batch.commit();
     return created;
   }
 
   @override
   Future<RepairServiceModel> updateRepairService(
-      RepairServiceModel entity) async {
+    RepairServiceModel entity, {
+    RepairServiceWriteContext context = const RepairServiceWriteContext(),
+  }) async {
     _ensureValid(entity);
     await _ensureUniqueModelPerCategory(
       entity.categoryId,
@@ -123,8 +147,50 @@ class FirebaseRepairServiceRemoteDataSource
       exceptId: entity.id,
     );
 
-    await _collection.doc(entity.id).update(entity.toUpdateMap());
-    final doc = await _collection.doc(entity.id).get();
+    final ref = _collection.doc(entity.id);
+    // Transaction (not a blind batch): eligibility depends on the CURRENT
+    // `status` (an update never changes it) and the price audit needs the
+    // previous variants — both must be read atomically with the write.
+    await _firestore.runTransaction<void>((tx) async {
+      final snapshot = await tx.get(ref);
+      if (!snapshot.exists) {
+        throw NotFoundException('Không tìm thấy bản ghi: ${entity.id}');
+      }
+      final before = RepairServiceModel.fromFirestore(snapshot);
+
+      tx.update(ref, entity.toUpdateMap());
+      tx.set(
+        _eligibility.doc(entity.id),
+        CatalogEligibilityModel.toFirestore(
+          modelId: entity.modelId,
+          offers: computeEligibilityOffers(
+            status: before.status,
+            enabled: entity.enabled,
+            variants: entity.variants,
+          ),
+          source: context.source,
+        ),
+      );
+
+      final audit = buildPricingAuditMetadata(before: before, after: entity);
+      if (audit != null && context.canAudit) {
+        tx.set(
+          _activityLogs.doc(),
+          ActivityLogModel(
+            id: '',
+            actorId: context.actorId!,
+            actorRole: context.actorRole!,
+            action: ActivityActions.updateRepairServicePricing,
+            targetId: entity.id,
+            targetType: ActivityTargetTypes.repairService,
+            metadata: audit,
+            timestamp: DateTime.now(), // stored as serverTimestamp()
+          ).toFirestore(),
+        );
+      }
+    });
+
+    final doc = await ref.get();
     if (!doc.exists) {
       throw NotFoundException(
         'Không tìm thấy bản ghi sau khi cập nhật: ${entity.id}',
@@ -134,22 +200,53 @@ class FirebaseRepairServiceRemoteDataSource
   }
 
   @override
-  Future<void> archiveRepairService(String id) async {
-    await _collection.doc(id).update({
-      'status': CatalogStatus.archived.name,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
+  Future<void> archiveRepairService(
+    String id, {
+    RepairServiceWriteContext context = const RepairServiceWriteContext(),
+  }) =>
+      _setStatus(id, CatalogStatus.archived, context);
 
   @override
-  Future<void> restoreRepairService(String id) async {
-    await _collection.doc(id).update({
-      'status': CatalogStatus.active.name,
-      'updatedAt': FieldValue.serverTimestamp(),
+  Future<void> restoreRepairService(
+    String id, {
+    RepairServiceWriteContext context = const RepairServiceWriteContext(),
+  }) =>
+      _setStatus(id, CatalogStatus.active, context);
+
+  /// Archive/restore: flips `status` and re-derives `catalog_eligibility`
+  /// from the stored document (raw — exactly what Rules will compare
+  /// against) in the same transaction. Archived ⇒ `offers = {}`.
+  Future<void> _setStatus(
+    String id,
+    CatalogStatus status,
+    RepairServiceWriteContext context,
+  ) async {
+    final ref = _collection.doc(id);
+    await _firestore.runTransaction<void>((tx) async {
+      final snapshot = await tx.get(ref);
+      if (!snapshot.exists) {
+        throw NotFoundException('Không tìm thấy bản ghi: $id');
+      }
+      final data = Map<String, dynamic>.of(snapshot.data()!);
+      data['status'] = status.name;
+
+      tx.update(ref, {
+        'status': status.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      tx.set(
+        _eligibility.doc(id),
+        CatalogEligibilityModel.toFirestore(
+          modelId: data['modelId'] as String? ?? '',
+          offers: computeEligibilityOffersFromDocument(data),
+          source: context.source,
+        ),
+      );
     });
   }
 
-  /// Pure domain validation (price >= 0, no duplicate variant/addon codes) —
+  /// Pure domain validation (enabled variants priced > 0, no negative
+  /// prices, no duplicate variant/addon codes) —
   /// see [RepairServiceEntity.validationErrors]. Re-checked here so an
   /// invalid document can never reach Firestore even if a future caller
   /// bypasses the CMS form's own pre-submit check.

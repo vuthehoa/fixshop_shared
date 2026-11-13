@@ -85,7 +85,10 @@ class FirebaseModelRemoteDataSource implements ModelRemoteDataSource {
     await _ensureUniqueCode(entity.code,
         productFamilyId: entity.productFamilyId);
 
-    final ref = _collection.doc();
+    // A non-empty pre-assigned id (CMS reserves one so catalog images can be
+    // uploaded to catalog/<collection>/<id>/ BEFORE the first save) is
+    // honoured, but never allowed to overwrite an existing document.
+    final ref = await _newDocRef(entity.id);
     final now = DateTime.now();
     final created = ModelModel(
       id: ref.id,
@@ -178,5 +181,14 @@ class FirebaseModelRemoteDataSource implements ModelRemoteDataSource {
         'Vui lòng lưu trữ các bản ghi con trước.',
       );
     }
+  }
+
+  Future<DocumentReference<Map<String, dynamic>>> _newDocRef(String id) async {
+    if (id.trim().isEmpty) return _collection.doc();
+    final ref = _collection.doc(id.trim());
+    if ((await ref.get()).exists) {
+      throw DuplicateCodeException('Bản ghi $id đã tồn tại.');
+    }
+    return ref;
   }
 }

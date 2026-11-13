@@ -15,7 +15,10 @@ import '../../repair_service/domain/entities/repair_service_entity.dart';
 import '../../repair_service/domain/entities/repair_service_addon_entity.dart';
 import '../../repair_service/domain/entities/repair_service_variant_entity.dart';
 import '../../repair_service/domain/repositories/repair_service_repository.dart';
+import '../../repair_service/domain/services/catalog_eligibility.dart';
 import '../../repair_service/domain/value_objects/repair_service_filter.dart';
+import '../../repair_service/domain/value_objects/repair_service_write_context.dart';
+import '../../auth/domain/entities/user_entity.dart';
 import '../../service_category/domain/entities/service_category_entity.dart';
 import '../../service_category/domain/repositories/service_category_repository.dart';
 import '../../service_category/domain/value_objects/service_category_filter.dart';
@@ -251,9 +254,18 @@ class CatalogImportService {
     required Map<String, String> modelIdByShorthand,
     required Map<String, String> modelNameByShorthand,
     required String createdBy,
+    UserRole? actorRole,
   }) async {
     var created = 0;
     var updated = 0;
+    // Every service write syncs catalog_eligibility in the same batch
+    // (source = 'import'); with a known actor role, price changes on rerun
+    // are also audited in the same transaction.
+    final writeContext = RepairServiceWriteContext(
+      source: CatalogEligibilitySource.importer,
+      actorId: createdBy,
+      actorRole: actorRole,
+    );
 
     try {
       for (final row in rows) {
@@ -312,6 +324,7 @@ class CatalogImportService {
               updatedAt: now,
               createdBy: createdBy,
             ),
+            context: writeContext,
           ));
           created++;
         } else {
@@ -323,6 +336,7 @@ class CatalogImportService {
                 name: serviceName,
                 variants: variants,
                 updatedAt: DateTime.now()),
+            context: writeContext,
           ));
           updated++;
         }

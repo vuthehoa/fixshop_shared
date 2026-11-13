@@ -9,6 +9,10 @@ class ManufacturerEntity extends Equatable {
   final String name;
   final String? description;
   final String? logoUrl;
+
+  /// Optional cover image for the brand page on the website (https download
+  /// URL on Firebase Storage). `null` = no cover.
+  final String? coverUrl;
   final CatalogStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -20,6 +24,7 @@ class ManufacturerEntity extends Equatable {
     required this.name,
     this.description,
     this.logoUrl,
+    this.coverUrl,
     this.status = CatalogStatus.active,
     required this.createdAt,
     required this.updatedAt,
@@ -35,6 +40,7 @@ class ManufacturerEntity extends Equatable {
     String? name,
     String? description,
     String? logoUrl,
+    String? coverUrl,
     CatalogStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -46,6 +52,7 @@ class ManufacturerEntity extends Equatable {
       name: name ?? this.name,
       description: description ?? this.description,
       logoUrl: logoUrl ?? this.logoUrl,
+      coverUrl: coverUrl ?? this.coverUrl,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -60,6 +67,7 @@ class ManufacturerEntity extends Equatable {
         name,
         description,
         logoUrl,
+        coverUrl,
         status,
         createdAt,
         updatedAt,

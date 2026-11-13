@@ -70,6 +70,14 @@ abstract final class ActivityActions {
   static const String updateProductFamily = 'UPDATE_PRODUCT_FAMILY';
   static const String updateRepairExecution = 'UPDATE_REPAIR_EXECUTION';
   static const String updateRepairService = 'UPDATE_REPAIR_SERVICE';
+
+  /// Variant price / enabled (or service-level `enabled`) change. Written in
+  /// the SAME transaction as the service update; metadata =
+  /// `{serviceId, modelId, categoryId, oldServiceEnabled, newServiceEnabled,
+  /// changes: [{variantCode, variantName, warrantyMonths, oldPrice, newPrice,
+  /// oldEnabled, newEnabled}]}`.
+  static const String updateRepairServicePricing =
+      'UPDATE_REPAIR_SERVICE_PRICING';
   static const String updateServiceCategory = 'UPDATE_SERVICE_CATEGORY';
   static const String updateShopProduct = 'UPDATE_SHOP_PRODUCT';
   static const String updateVariant = 'UPDATE_VARIANT';

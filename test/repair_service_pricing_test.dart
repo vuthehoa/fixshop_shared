@@ -134,17 +134,54 @@ void main() {
     });
   });
 
+  group('RepairServiceEntity — booking readiness vs. price (contract §1)', () {
+    test('an enabled variant priced 0 does NOT make the service bookable', () {
+      const unpriced =
+          RepairServiceVariantEntity(code: 'x', name: 'x', price: 0);
+      final svc = _service(variants: const [unpriced]);
+      expect(svc.isBookingReady, isFalse);
+      expect(svc.bookableOffers, isEmpty);
+      expect(svc.bookability, RepairServiceBookability.noValidPrice);
+    });
+
+    test('bookability labels: bookable / paused / hidden', () {
+      expect(_service(variants: const [_variant]).bookability,
+          RepairServiceBookability.bookable);
+      expect(_service(enabled: false, variants: const [_variant]).bookability,
+          RepairServiceBookability.bookingPaused);
+      expect(
+          _service(status: CatalogStatus.archived, variants: const [_variant])
+              .bookability,
+          RepairServiceBookability.hidden);
+      expect(RepairServiceBookability.bookable.label, 'Đặt lịch được');
+      expect(RepairServiceBookability.noValidPrice.label, 'Chưa có giá hợp lệ');
+      expect(RepairServiceBookability.bookingPaused.label,
+          'Tạm ngưng nhận đặt lịch');
+      expect(RepairServiceBookability.hidden.label, 'Đang ẩn');
+    });
+  });
+
   group('RepairServiceEntity.minimumPrice', () {
     test('null when there are no enabled variants', () {
       expect(_service(variants: const []).minimumPrice, isNull);
     });
 
-    test('picks the lowest price, including a 0-priced variant', () {
-      const free = RepairServiceVariantEntity(
-          code: 'free', name: 'Free check', price: 0);
-      final svc = _service(variants: [_variant, free]);
+    test(
+        'ignores a 0-priced variant — 0 means "chưa có giá", never "từ 0đ" '
+        '(eligibility contract §1)', () {
+      const unpriced = RepairServiceVariantEntity(
+          code: 'unpriced', name: 'Chưa có giá', price: 0, enabled: false);
+      final svc = _service(variants: [_variant, unpriced]);
 
-      expect(svc.minimumPrice, 0);
+      expect(svc.minimumPrice, 500000);
+    });
+
+    test('picks the lowest VALID price among bookable variants', () {
+      const cheaper = RepairServiceVariantEntity(
+          code: 'cheaper', name: 'Pin thường', price: 300000);
+      final svc = _service(variants: [_variant, cheaper]);
+
+      expect(svc.minimumPrice, 300000);
     });
 
     test('ignores disabled variants when computing the minimum', () {
@@ -162,10 +199,35 @@ void main() {
       expect(svc.validationErrors(), isNotEmpty);
     });
 
-    test('price = 0 passes validation (never treated as invalid)', () {
-      const free =
+    test(
+        'an ENABLED variant with price = 0 is rejected — 0 is "chưa có giá", '
+        'not "miễn phí" (eligibility contract §1)', () {
+      const unpriced =
           RepairServiceVariantEntity(code: 'free', name: 'Free', price: 0);
-      final svc = _service(variants: [free]);
+      final svc = _service(variants: [unpriced]);
+      expect(svc.validationErrors(), hasLength(1));
+      expect(svc.validationErrors().single, contains('phải có giá lớn hơn 0'));
+    });
+
+    test('a DISABLED variant may keep price = 0', () {
+      const unpriced = RepairServiceVariantEntity(
+          code: 'free', name: 'Free', price: 0, enabled: false);
+      final svc = _service(variants: [unpriced]);
+      expect(svc.validationErrors(), isEmpty);
+    });
+
+    test('an enabled variant without a code is rejected', () {
+      final svc = _service(variants: [_variant.copyWith(code: '  ')]);
+      expect(svc.validationErrors(), isNotEmpty);
+    });
+
+    test('an enabled variant in a non-VND currency is rejected', () {
+      final svc = _service(variants: [_variant.copyWith(currency: 'USD')]);
+      expect(svc.validationErrors(), isNotEmpty);
+    });
+
+    test('a 0-priced ADD-ON stays valid (free add-on)', () {
+      final svc = _service(variants: const [_variant]);
       expect(svc.validationErrors(), isEmpty);
     });
 

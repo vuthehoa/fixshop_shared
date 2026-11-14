@@ -16,6 +16,7 @@ export 'src/core/utils/paginated_result.dart';
 export 'src/core/permissions/permission.dart';
 export 'src/core/permissions/role_permission.dart';
 export 'src/core/permissions/permission_resolver.dart';
+export 'src/core/permissions/staff_directory_policy.dart';
 
 // Core — theme tokens
 export 'src/core/theme/app_colors.dart';

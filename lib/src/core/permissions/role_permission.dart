@@ -35,8 +35,12 @@ abstract final class RolePermissions {
   static const Set<Permission> _receptionPermissions = {
     Permission.readEmployee,
     Permission.viewCustomer,
+    // Front desk registers walk-in customers and their devices (rules:
+    // customers/devices create+update = admin/manager/reception).
+    Permission.manageCustomer,
     Permission.viewCatalog,
     Permission.viewDevice,
+    Permission.manageDevice,
     Permission.viewRepairOrder,
     Permission.createRepairOrder,
     Permission.updateRepairOrder,

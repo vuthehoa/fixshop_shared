@@ -28,6 +28,8 @@ abstract final class RolePermissions {
     // Manual notification UI is restricted to admin and manager.
     Permission.viewNotifications,
     Permission.sendNotifications,
+    Permission.manageSupportRequests,
+    Permission.viewSystemHealth,
   };
 
   static const Set<Permission> _receptionPermissions = {
@@ -38,6 +40,7 @@ abstract final class RolePermissions {
     Permission.viewRepairOrder,
     Permission.createRepairOrder,
     Permission.updateRepairOrder,
+    Permission.manageSupportRequests,
   };
 
   static const Set<Permission> _technicianPermissions = {

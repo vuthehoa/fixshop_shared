@@ -30,4 +30,10 @@ enum Permission {
   cancelRepairOrder,
   viewNotifications,
   sendNotifications,
+
+  // 2026-11-14 — CMS core pages (mirror of firestore.rules)
+  /// support_requests inbox (rules: isSupportStaff = admin/manager/reception).
+  manageSupportRequests,
+  /// system_health/latest (rules: admin/manager read).
+  viewSystemHealth,
 }

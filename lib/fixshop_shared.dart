@@ -268,3 +268,4 @@ export 'src/features/repair_service/data/models/repair_service_model.dart';
 export 'src/features/repair_service/data/models/catalog_eligibility_model.dart';
 export 'src/features/service_category/data/models/service_category_model.dart';
 export 'src/features/product/data/models/shop_product_model.dart';
+export 'src/features/device_warranty/domain/device_warranty_activation.dart';

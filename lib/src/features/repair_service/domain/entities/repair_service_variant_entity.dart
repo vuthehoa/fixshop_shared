@@ -12,9 +12,12 @@ import 'repair_service_addon_entity.dart';
 /// reusing that collection here would corrupt an unrelated, already-live
 /// concept (see Phase 1 audit).
 ///
-/// `price = 0` is a valid, real-world case and must never be treated as
-/// "invalid" or "missing" — only the entry's *absence* from [addons] means
-/// "not applicable".
+/// Variant [price] semantics follow the eligibility contract: only an
+/// integer VND price > 0 is a real price. `0` means "chưa có giá" (no price
+/// yet) — never "miễn phí" — and an ENABLED variant may not be saved with it
+/// (see [RepairServiceEntity.validationErrors]). Add-on prices are different:
+/// a 0-priced add-on is a legitimate free add-on, and only the entry's
+/// *absence* from [addons] means "not applicable".
 class RepairServiceVariantEntity extends Equatable {
   final String code;
   final String name;

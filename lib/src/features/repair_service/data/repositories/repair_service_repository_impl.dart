@@ -7,6 +7,7 @@ import '../../../../core/utils/paginated_result.dart';
 import '../../domain/entities/repair_service_entity.dart';
 import '../../domain/repositories/repair_service_repository.dart';
 import '../../domain/value_objects/repair_service_filter.dart';
+import '../../domain/value_objects/repair_service_write_context.dart';
 import '../datasources/repair_service_remote_datasource.dart';
 import '../models/repair_service_model.dart';
 
@@ -43,23 +44,37 @@ class RepairServiceRepositoryImpl implements RepairServiceRepository {
 
   @override
   Future<Either<Failure, RepairServiceEntity>> createRepairService(
-          RepairServiceEntity entity) =>
-      _run(() => _dataSource
-          .createRepairService(RepairServiceModel.fromEntity(entity)));
+    RepairServiceEntity entity, {
+    RepairServiceWriteContext context = const RepairServiceWriteContext(),
+  }) =>
+      _run(() => _dataSource.createRepairService(
+            RepairServiceModel.fromEntity(entity),
+            context: context,
+          ));
 
   @override
   Future<Either<Failure, RepairServiceEntity>> updateRepairService(
-          RepairServiceEntity entity) =>
-      _run(() => _dataSource
-          .updateRepairService(RepairServiceModel.fromEntity(entity)));
+    RepairServiceEntity entity, {
+    RepairServiceWriteContext context = const RepairServiceWriteContext(),
+  }) =>
+      _run(() => _dataSource.updateRepairService(
+            RepairServiceModel.fromEntity(entity),
+            context: context,
+          ));
 
   @override
-  Future<Either<Failure, void>> archiveRepairService(String id) =>
-      _runVoid(() => _dataSource.archiveRepairService(id));
+  Future<Either<Failure, void>> archiveRepairService(
+    String id, {
+    RepairServiceWriteContext context = const RepairServiceWriteContext(),
+  }) =>
+      _runVoid(() => _dataSource.archiveRepairService(id, context: context));
 
   @override
-  Future<Either<Failure, void>> restoreRepairService(String id) =>
-      _runVoid(() => _dataSource.restoreRepairService(id));
+  Future<Either<Failure, void>> restoreRepairService(
+    String id, {
+    RepairServiceWriteContext context = const RepairServiceWriteContext(),
+  }) =>
+      _runVoid(() => _dataSource.restoreRepairService(id, context: context));
 
   Future<Either<Failure, T>> _run<T>(Future<T> Function() fn) async {
     try {

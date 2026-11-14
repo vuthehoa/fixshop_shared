@@ -10,6 +10,10 @@ abstract final class FirestoreConstants {
   static const String variants = 'variants';
   static const String repairServices = 'repair_services';
 
+  /// Booking summary of `repair_services/{id}` (same doc ID), written in the
+  /// SAME batch as every service write — see catalog_eligibility.dart.
+  static const String catalogEligibility = 'catalog_eligibility';
+
   // ── Devices ───────────────────────────────────────────────────────────────
   static const String devices = 'devices';
 

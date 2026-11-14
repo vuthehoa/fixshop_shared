@@ -78,7 +78,10 @@ class FirebaseManufacturerRemoteDataSource
   Future<ManufacturerModel> createManufacturer(ManufacturerModel entity) async {
     await _ensureUniqueCode(entity.code);
 
-    final ref = _collection.doc();
+    // A non-empty pre-assigned id (CMS reserves one so catalog images can be
+    // uploaded to catalog/<collection>/<id>/ BEFORE the first save) is
+    // honoured, but never allowed to overwrite an existing document.
+    final ref = await _newDocRef(entity.id);
     final now = DateTime.now();
     final created = ManufacturerModel(
       id: ref.id,
@@ -86,6 +89,7 @@ class FirebaseManufacturerRemoteDataSource
       name: entity.name,
       description: entity.description,
       logoUrl: entity.logoUrl,
+      coverUrl: entity.coverUrl,
       status: CatalogStatus.active,
       createdAt: now,
       updatedAt: now,
@@ -153,5 +157,14 @@ class FirebaseManufacturerRemoteDataSource
         'Vui lòng lưu trữ các bản ghi con trước.',
       );
     }
+  }
+
+  Future<DocumentReference<Map<String, dynamic>>> _newDocRef(String id) async {
+    if (id.trim().isEmpty) return _collection.doc();
+    final ref = _collection.doc(id.trim());
+    if ((await ref.get()).exists) {
+      throw DuplicateCodeException('Bản ghi $id đã tồn tại.');
+    }
+    return ref;
   }
 }

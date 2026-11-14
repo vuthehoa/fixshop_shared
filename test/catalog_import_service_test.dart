@@ -81,6 +81,7 @@ void main() {
     registerFallbackValue(_modelEntity('x', 'y'));
     registerFallbackValue(_categoryEntity('x'));
     registerFallbackValue(_repairService(categoryId: 'x', modelId: 'y'));
+    registerFallbackValue(const RepairServiceWriteContext());
     registerFallbackValue(const RepairServiceFilter());
   });
 
@@ -274,8 +275,10 @@ void main() {
         () async {
       when(() => serviceRepo.getRepairServices(any())).thenAnswer(
           (_) async => const Right(PaginatedResult(items: [], hasMore: false)));
-      when(() => serviceRepo.createRepairService(any())).thenAnswer((i) async =>
-          Right(i.positionalArguments.first as RepairServiceEntity));
+      when(() => serviceRepo.createRepairService(any(),
+              context: any(named: 'context')))
+          .thenAnswer((i) async =>
+              Right(i.positionalArguments.first as RepairServiceEntity));
 
       final result = await service.importServices(
         rows: [row],
@@ -291,12 +294,18 @@ void main() {
       expect(outcome.created, 1);
       expect(outcome.updated, 0);
 
-      final captured =
-          verify(() => serviceRepo.createRepairService(captureAny()))
-              .captured
-              .single as RepairServiceEntity;
+      final captures = verify(() => serviceRepo.createRepairService(
+          captureAny(),
+          context: captureAny(named: 'context'))).captured;
+      final captured = captures[0] as RepairServiceEntity;
       expect(captured.name, 'Pin iPhone — iPhone X');
       expect(captured.variants.single.price, 500000);
+
+      // The same-batch catalog_eligibility doc is stamped source = 'import'.
+      final context = captures[1] as RepairServiceWriteContext;
+      expect(context.source, CatalogEligibilitySource.importer);
+      expect(context.source.value, 'import');
+      expect(context.actorId, 'system_import');
     });
 
     test(
@@ -320,8 +329,10 @@ void main() {
       );
       when(() => serviceRepo.getRepairServices(any())).thenAnswer(
           (_) async => const Right(PaginatedResult(items: [], hasMore: false)));
-      when(() => serviceRepo.createRepairService(any())).thenAnswer((i) async =>
-          Right(i.positionalArguments.first as RepairServiceEntity));
+      when(() => serviceRepo.createRepairService(any(),
+              context: any(named: 'context')))
+          .thenAnswer((i) async =>
+              Right(i.positionalArguments.first as RepairServiceEntity));
 
       await service.importServices(
         rows: [multiVariantRow],
@@ -332,10 +343,10 @@ void main() {
         createdBy: 'system_import',
       );
 
-      final captured =
-          verify(() => serviceRepo.createRepairService(captureAny()))
-              .captured
-              .single as RepairServiceEntity;
+      final captured = verify(() => serviceRepo.createRepairService(
+              captureAny(),
+              context: any(named: 'context'))).captured.single
+          as RepairServiceEntity;
       expect(captured.variants[0].order, 0);
       expect(captured.variants[1].order, 10);
       expect(captured.variants[0].addons[0].order, 0);
@@ -355,8 +366,10 @@ void main() {
       );
       when(() => serviceRepo.getRepairServices(any())).thenAnswer((_) async =>
           Right(PaginatedResult(items: [existing], hasMore: false)));
-      when(() => serviceRepo.updateRepairService(any())).thenAnswer((i) async =>
-          Right(i.positionalArguments.first as RepairServiceEntity));
+      when(() => serviceRepo.updateRepairService(any(),
+              context: any(named: 'context')))
+          .thenAnswer((i) async =>
+              Right(i.positionalArguments.first as RepairServiceEntity));
 
       final result = await service.importServices(
         rows: [row],
@@ -371,12 +384,13 @@ void main() {
           result.getOrElse(() => throw StateError('expected Right'));
       expect(outcome.created, 0);
       expect(outcome.updated, 1);
-      verifyNever(() => serviceRepo.createRepairService(any()));
+      verifyNever(() => serviceRepo.createRepairService(any(),
+          context: any(named: 'context')));
 
-      final captured =
-          verify(() => serviceRepo.updateRepairService(captureAny()))
-              .captured
-              .single as RepairServiceEntity;
+      final captured = verify(() => serviceRepo.updateRepairService(
+              captureAny(),
+              context: any(named: 'context'))).captured.single
+          as RepairServiceEntity;
       expect(captured.id, 'existing-svc');
       expect(captured.createdAt, createdAt); // preserved, not reset
       expect(
@@ -392,11 +406,13 @@ void main() {
         (_) async => Right(PaginatedResult(
             items: stored == null ? [] : [stored!], hasMore: false)),
       );
-      when(() => serviceRepo.createRepairService(any())).thenAnswer((i) async {
+      when(() => serviceRepo.createRepairService(any(),
+          context: any(named: 'context'))).thenAnswer((i) async {
         stored = i.positionalArguments.first as RepairServiceEntity;
         return Right(stored!);
       });
-      when(() => serviceRepo.updateRepairService(any())).thenAnswer((i) async {
+      when(() => serviceRepo.updateRepairService(any(),
+          context: any(named: 'context'))).thenAnswer((i) async {
         stored = i.positionalArguments.first as RepairServiceEntity;
         return Right(stored!);
       });
@@ -429,7 +445,8 @@ void main() {
       expect(first.getOrElse(() => throw StateError('x')).created, 1);
       expect(second.getOrElse(() => throw StateError('x')).created, 0);
       expect(second.getOrElse(() => throw StateError('x')).updated, 1);
-      verify(() => serviceRepo.createRepairService(any())).called(1);
+      verify(() => serviceRepo.createRepairService(any(),
+          context: any(named: 'context'))).called(1);
     });
   });
 

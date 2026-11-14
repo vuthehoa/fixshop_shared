@@ -9,6 +9,7 @@ import '../../domain/entities/shop_product_entity.dart';
 import '../../domain/repositories/shop_product_repository.dart';
 import '../../domain/value_objects/shop_product_filter.dart';
 import '../datasources/shop_product_remote_datasource.dart';
+import '../../domain/enums/product_status.dart';
 import '../models/shop_product_model.dart';
 
 class ShopProductRepositoryImpl implements ShopProductRepository {
@@ -75,6 +76,14 @@ class ShopProductRepositoryImpl implements ShopProductRepository {
   Future<Either<Failure, void>> restoreProduct(String id,
           {required String actorId}) =>
       _runVoid(() => _dataSource.restoreProduct(id, actorId: actorId));
+
+  @override
+  Future<Either<Failure, void>> changeStatus(
+    String id, {
+    required ProductStatus to,
+    required String actorId,
+  }) =>
+      _runVoid(() => _dataSource.changeStatus(id, to: to, actorId: actorId));
 
   @override
   Future<Either<Failure, void>> deleteProduct(String id) =>

@@ -22,15 +22,58 @@ void main() {
       }
     });
 
-    test('sold_out wire value maps correctly', () {
-      expect(ProductStatus.soldOut.wireName, 'sold_out');
-      expect(ProductStatus.fromName('sold_out'), ProductStatus.soldOut);
+    test('decision 4 wire values and Vietnamese labels', () {
+      expect(ProductStatus.values.map((s) => s.wireName),
+          ['draft', 'selling', 'reserved', 'sold', 'discontinued']);
+      expect(ProductStatus.values.map((s) => s.displayName),
+          ['Bản nháp', 'Đang bán', 'Đã giữ hàng', 'Đã bán', 'Ngừng bán']);
     });
 
-    test('only active is shoppable', () {
-      expect(ProductStatus.active.isShoppable, isTrue);
+    test('legacy values map like the migration script', () {
+      expect(ProductStatus.fromName('active'), ProductStatus.selling);
+      expect(ProductStatus.fromName('sold_out'), ProductStatus.sold);
+      expect(ProductStatus.fromName('sold'), ProductStatus.sold);
+      expect(ProductStatus.fromName('hidden'), ProductStatus.discontinued);
+      expect(ProductStatus.fromName('archived'), ProductStatus.discontinued);
+      expect(ProductStatus.fromName(null), ProductStatus.draft);
+      expect(ProductStatus.isLegacyWireValue('active'), isTrue);
+      expect(ProductStatus.isLegacyWireValue('selling'), isFalse);
+    });
+
+    test('transitions mirror the rules', () {
+      final allowed = {
+        for (final f in ProductStatus.values)
+          for (final t in ProductStatusTransitions.allowedNext(f))
+            '${f.name}>${t.name}',
+      };
+      expect(allowed, {
+        'draft>selling',
+        'draft>discontinued',
+        'selling>draft',
+        'selling>reserved',
+        'selling>sold',
+        'selling>discontinued',
+        'reserved>selling',
+        'reserved>sold',
+        'reserved>discontinued',
+        'sold>selling',
+        'discontinued>draft',
+        'discontinued>selling',
+      });
+      expect(
+          ProductStatusTransitions.canTransition(
+              ProductStatus.sold, ProductStatus.sold),
+          isTrue);
+      expect(
+          ProductStatusTransitions.canTransition(
+              ProductStatus.draft, ProductStatus.sold),
+          isFalse);
+    });
+
+    test('only selling is shoppable', () {
+      expect(ProductStatus.selling.isShoppable, isTrue);
       for (final s
-          in ProductStatus.values.where((s) => s != ProductStatus.active)) {
+          in ProductStatus.values.where((s) => s != ProductStatus.selling)) {
         expect(s.isShoppable, isFalse);
       }
     });
@@ -148,21 +191,12 @@ void main() {
   });
 
   group('ShopProductEntity derived', () {
-    test('isShoppable == published + active + in stock', () {
-      expect(
-        build(isPublished: true, status: ProductStatus.active, quantity: 1)
-            .isShoppable,
-        isTrue,
-      );
-      expect(
-        build(isPublished: true, status: ProductStatus.active, quantity: 0)
-            .isShoppable,
-        isFalse,
-      );
-      expect(
-        build(isPublished: false, status: ProductStatus.active).isShoppable,
-        isFalse,
-      );
+    test('isShoppable == selling + in stock', () {
+      expect(build(status: ProductStatus.selling, quantity: 1).isShoppable,
+          isTrue);
+      expect(build(status: ProductStatus.selling, quantity: 0).isShoppable,
+          isFalse);
+      expect(build(status: ProductStatus.reserved).isShoppable, isFalse);
     });
 
     test('discountPercent', () {

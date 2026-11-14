@@ -1,48 +1,82 @@
-/// Lifecycle status of a commerce product ("sản phẩm cũ" listing).
+/// Lifecycle of an INTERNAL used-device listing (decision 4, 2026-11-14:
+/// products are staff-only — no public shopfront, firestore.rules allow
+/// staff read only).
 ///
-/// This is deliberately distinct from `CatalogStatus` (master catalog) —
-/// a listing has a richer lifecycle than active/archived. `archived` still
-/// plays the same soft-delete role every other module uses: never removed
-/// from Firestore, only hidden from the shopfront and the active list.
+/// Wire values are stable strings. Legacy values written before decision 4
+/// (`active`, `sold_out`, `hidden`, `archived`) are still parsed so old
+/// documents render until `tools/products-status-migration` rewrites them:
+///   draft → draft · active → selling · sold_out → sold · sold → sold ·
+///   hidden → discontinued · archived → discontinued
 enum ProductStatus {
   draft,
-  active,
-  soldOut,
+  selling,
+  reserved,
   sold,
-  hidden,
-  archived;
+  discontinued;
 
-  String get wireName => switch (this) {
-        ProductStatus.draft => 'draft',
-        ProductStatus.active => 'active',
-        ProductStatus.soldOut => 'sold_out',
-        ProductStatus.sold => 'sold',
-        ProductStatus.hidden => 'hidden',
-        ProductStatus.archived => 'archived',
-      };
+  String get wireName => name;
 
   String get displayName => switch (this) {
         ProductStatus.draft => 'Bản nháp',
-        ProductStatus.active => 'Đang bán',
-        ProductStatus.soldOut => 'Hết hàng',
+        ProductStatus.selling => 'Đang bán',
+        ProductStatus.reserved => 'Đã giữ hàng',
         ProductStatus.sold => 'Đã bán',
-        ProductStatus.hidden => 'Đã ẩn',
-        ProductStatus.archived => 'Đã lưu trữ',
+        ProductStatus.discontinued => 'Ngừng bán',
       };
 
-  static ProductStatus fromName(String? value) => switch (value) {
-        'draft' => ProductStatus.draft,
-        'active' => ProductStatus.active,
-        'sold_out' => ProductStatus.soldOut,
-        'sold' => ProductStatus.sold,
-        'hidden' => ProductStatus.hidden,
-        'archived' => ProductStatus.archived,
-        _ => ProductStatus.draft,
-      };
+  /// Legacy wire value → new status (same table as the migration script).
+  static const Map<String, ProductStatus> legacyMapping = {
+    'draft': ProductStatus.draft,
+    'active': ProductStatus.selling,
+    'sold_out': ProductStatus.sold,
+    'soldOut': ProductStatus.sold,
+    'sold': ProductStatus.sold,
+    'hidden': ProductStatus.discontinued,
+    'archived': ProductStatus.discontinued,
+  };
 
-  bool get isArchived => this == ProductStatus.archived;
+  static ProductStatus fromName(String? value) {
+    for (final s in ProductStatus.values) {
+      if (s.name == value) return s;
+    }
+    return legacyMapping[value] ?? ProductStatus.draft;
+  }
 
-  /// Visible on the mobile shopfront only in this state (combined with
-  /// `isPublished == true` and `quantity > 0`).
-  bool get isShoppable => this == ProductStatus.active;
+  /// True for a stored value that predates decision 4 (needs migration).
+  static bool isLegacyWireValue(String? value) =>
+      value != null && !ProductStatus.values.any((s) => s.name == value);
+
+  /// "Archived" in the old UI sense: no longer for sale.
+  bool get isArchived => this == ProductStatus.discontinued;
+
+  /// Available to sell at the counter.
+  bool get isShoppable => this == ProductStatus.selling;
+}
+
+/// Allowed status changes — mirror of firestore.rules `productStatusEdges()`.
+/// Same → same is always allowed (plain edits).
+abstract final class ProductStatusTransitions {
+  static const Map<ProductStatus, Set<ProductStatus>> _next = {
+    ProductStatus.draft: {ProductStatus.selling, ProductStatus.discontinued},
+    ProductStatus.selling: {
+      ProductStatus.draft,
+      ProductStatus.reserved,
+      ProductStatus.sold,
+      ProductStatus.discontinued,
+    },
+    ProductStatus.reserved: {
+      ProductStatus.selling,
+      ProductStatus.sold,
+      ProductStatus.discontinued,
+    },
+    // A returned / mis-recorded sale goes back on sale.
+    ProductStatus.sold: {ProductStatus.selling},
+    ProductStatus.discontinued: {ProductStatus.draft, ProductStatus.selling},
+  };
+
+  static Set<ProductStatus> allowedNext(ProductStatus from) =>
+      _next[from] ?? const {};
+
+  static bool canTransition(ProductStatus from, ProductStatus to) =>
+      from == to || allowedNext(from).contains(to);
 }

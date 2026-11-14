@@ -51,7 +51,7 @@ class ShopProductFilter extends Equatable {
     this.minPrice,
     this.maxPrice,
     this.pageSize = 20,
-  })  : status = ProductStatus.active,
+  })  : status = ProductStatus.selling,
         publishedOnly = true,
         inStockOnly = true;
 

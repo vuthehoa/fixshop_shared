@@ -4,6 +4,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/utils/paginated_result.dart';
 import '../entities/shop_product_entity.dart';
+import '../enums/product_status.dart';
 import '../value_objects/shop_product_filter.dart';
 
 abstract class ShopProductRepository {
@@ -36,12 +37,19 @@ abstract class ShopProductRepository {
     required String actorId,
   });
 
-  /// Soft delete — `status = archived`, `isPublished = false`.
+  /// Soft delete — `status = discontinued` (Ngừng bán).
   Future<Either<Failure, void>> archiveProduct(String id,
       {required String actorId});
 
   Future<Either<Failure, void>> restoreProduct(String id,
       {required String actorId});
+
+  /// Status change along [ProductStatusTransitions]; rejects illegal moves.
+  Future<Either<Failure, void>> changeStatus(
+    String id, {
+    required ProductStatus to,
+    required String actorId,
+  });
 
   /// Hard delete — removes the Firestore document. Storage cleanup is the
   /// caller's responsibility (via [ProductImageStorageService]).

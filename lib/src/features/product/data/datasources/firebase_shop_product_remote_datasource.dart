@@ -142,38 +142,49 @@ class FirebaseShopProductRemoteDataSource
     return getProduct(model.id);
   }
 
+  /// Decision 4: products are internal; "publish" now means "Đang bán".
+  /// `isPublished` is kept in sync (== selling) only for legacy readers.
   @override
   Future<void> setPublished(
     String id, {
     required bool isPublished,
     required String actorId,
+  }) =>
+      changeStatus(
+        id,
+        to: isPublished ? ProductStatus.selling : ProductStatus.draft,
+        actorId: actorId,
+      );
+
+  @override
+  Future<void> archiveProduct(String id, {required String actorId}) =>
+      changeStatus(id, to: ProductStatus.discontinued, actorId: actorId);
+
+  @override
+  Future<void> restoreProduct(String id, {required String actorId}) =>
+      changeStatus(id, to: ProductStatus.draft, actorId: actorId);
+
+  @override
+  Future<void> changeStatus(
+    String id, {
+    required ProductStatus to,
+    required String actorId,
   }) async {
-    await _collection.doc(id).update({
-      'isPublished': isPublished,
-      // Publishing forces the shoppable status; unpublishing drops it to a
-      // non-public state without discarding the row.
-      'status': isPublished
-          ? ProductStatus.active.wireName
-          : ProductStatus.hidden.wireName,
-      'updatedBy': actorId,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  @override
-  Future<void> archiveProduct(String id, {required String actorId}) async {
-    await _collection.doc(id).update({
-      'status': ProductStatus.archived.wireName,
-      'isPublished': false,
-      'updatedBy': actorId,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  @override
-  Future<void> restoreProduct(String id, {required String actorId}) async {
-    await _collection.doc(id).update({
-      'status': ProductStatus.draft.wireName,
+    final ref = _collection.doc(id);
+    final snap = await ref.get();
+    if (!snap.exists) throw NotFoundException('Không tìm thấy sản phẩm: $id');
+    final raw = snap.data()?['status'] as String?;
+    final from = ProductStatus.fromName(raw);
+    // A legacy (pre-migration) value may move to any new status.
+    if (!ProductStatus.isLegacyWireValue(raw) &&
+        !ProductStatusTransitions.canTransition(from, to)) {
+      throw CatalogValidationException(
+        'Không thể chuyển từ "${from.displayName}" sang "${to.displayName}".',
+      );
+    }
+    await ref.update({
+      'status': to.wireName,
+      'isPublished': to == ProductStatus.selling,
       'updatedBy': actorId,
       'updatedAt': FieldValue.serverTimestamp(),
     });

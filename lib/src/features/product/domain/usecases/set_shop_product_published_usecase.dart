@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/usecases/usecase.dart';
+import '../enums/product_status.dart';
 import '../repositories/shop_product_repository.dart';
 
 class SetShopProductPublishedUseCase
@@ -34,4 +35,36 @@ class SetShopProductPublishedParams extends Equatable {
 
   @override
   List<Object?> get props => [id, isPublished, actorId];
+}
+
+/// Decision 4 — generic status change (Bản nháp / Đang bán / Đã giữ hàng /
+/// Đã bán / Ngừng bán) along [ProductStatusTransitions].
+class ChangeShopProductStatusUseCase
+    extends UseCase<void, ChangeShopProductStatusParams> {
+  final ShopProductRepository _repository;
+
+  ChangeShopProductStatusUseCase(this._repository);
+
+  @override
+  Future<Either<Failure, void>> call(ChangeShopProductStatusParams params) =>
+      _repository.changeStatus(
+        params.id,
+        to: params.to,
+        actorId: params.actorId,
+      );
+}
+
+class ChangeShopProductStatusParams extends Equatable {
+  final String id;
+  final ProductStatus to;
+  final String actorId;
+
+  const ChangeShopProductStatusParams({
+    required this.id,
+    required this.to,
+    required this.actorId,
+  });
+
+  @override
+  List<Object?> get props => [id, to, actorId];
 }

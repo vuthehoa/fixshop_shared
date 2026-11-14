@@ -103,11 +103,10 @@ class ShopProductEntity extends Equatable {
     required this.updatedAt,
   });
 
-  bool get isArchived => status == ProductStatus.archived;
+  bool get isArchived => status == ProductStatus.discontinued;
 
   /// Exactly the state the mobile shopfront query returns.
-  bool get isShoppable =>
-      isPublished && status == ProductStatus.active && quantity > 0;
+  bool get isShoppable => status == ProductStatus.selling && quantity > 0;
 
   List<ProductImage> get sortedImages {
     final copy = [...images]

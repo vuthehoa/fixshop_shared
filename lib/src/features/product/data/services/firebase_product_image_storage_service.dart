@@ -66,7 +66,8 @@ class FirebaseProductImageStorageService implements ProductImageStorageService {
       return Left(StorageFailure(_message(e)));
     } catch (e, st) {
       if (kDebugMode) {
-        debugPrint('[ProductStorage] upload path=$path unexpected error: $e\n$st');
+        debugPrint(
+            '[ProductStorage] upload path=$path unexpected error: $e\n$st');
       }
       return Left(StorageFailure('Tải ảnh thất bại: $e'));
     }
@@ -97,7 +98,8 @@ class FirebaseProductImageStorageService implements ProductImageStorageService {
       return const Right(unit);
     } on FirebaseException catch (e, st) {
       if (e.code == 'object-not-found') return const Right(unit);
-      _logFirebaseException('deleteFolder', 'products/$productId/images', e, st);
+      _logFirebaseException(
+          'deleteFolder', 'products/$productId/images', e, st);
       return Left(StorageFailure(_message(e)));
     } catch (e) {
       return Left(StorageFailure('Dọn dẹp ảnh thất bại: $e'));
@@ -128,9 +130,8 @@ class FirebaseProductImageStorageService implements ProductImageStorageService {
       // The caller IS authenticated (a valid ID token was sent) but Storage
       // Rules rejected the object path — a rules/config problem, not a stale
       // session. Telling the user to "log in again" would send them in circles.
-      'unauthorized' =>
-        'Không thể tải ảnh lên do cấu hình quyền lưu trữ. '
-            'Vui lòng thử lại hoặc liên hệ quản trị viên.',
+      'unauthorized' => 'Không thể tải ảnh lên do cấu hình quyền lưu trữ. '
+          'Vui lòng thử lại hoặc liên hệ quản trị viên.',
       'unauthenticated' =>
         'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
       'canceled' => 'Quá trình tải ảnh đã bị huỷ.',

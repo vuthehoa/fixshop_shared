@@ -114,14 +114,23 @@ abstract final class RepairOrderRolePolicy {
         (role == UserRole.technician && isAssignedToActor);
   }
 
-  /// (Re)assign without a status change. A technician may only take the
-  /// order themselves ([onlySelf] == true for them).
-  static bool canAssign(UserRole role, RepairOrderStatus status) {
+  /// (Re)assign without a status change. Reassigning between technicians is
+  /// admin/manager/reception only; a technician may only claim an order that
+  /// has no technician yet (and only for themselves — see [assignOnlySelf]).
+  static bool canAssign(
+    UserRole role,
+    RepairOrderStatus status, {
+    String? currentTechnicianId,
+  }) {
     if (status == RepairOrderStatus.cancelled ||
         status == RepairOrderStatus.delivered) {
       return false;
     }
-    return role.isCmsUser;
+    return switch (role) {
+      UserRole.admin || UserRole.manager || UserRole.reception => true,
+      UserRole.technician => currentTechnicianId == null,
+      UserRole.customer => false,
+    };
   }
 
   static bool assignOnlySelf(UserRole role) => role == UserRole.technician;

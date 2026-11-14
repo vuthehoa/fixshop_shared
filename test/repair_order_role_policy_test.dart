@@ -96,4 +96,24 @@ void main() {
       isFalse,
     );
   });
+
+  test('assignment: technician only claims unassigned orders', () {
+    expect(
+      RepairOrderRolePolicy.canAssign(
+          UserRole.technician, RepairOrderStatus.diagnosing,
+          currentTechnicianId: 'other'),
+      isFalse,
+    );
+    expect(
+      RepairOrderRolePolicy.canAssign(
+          UserRole.technician, RepairOrderStatus.diagnosing),
+      isTrue,
+    );
+    expect(
+      RepairOrderRolePolicy.canAssign(
+          UserRole.reception, RepairOrderStatus.diagnosing,
+          currentTechnicianId: 'other'),
+      isTrue,
+    );
+  });
 }

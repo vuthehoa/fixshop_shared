@@ -115,7 +115,17 @@ class ShopProductRepositoryImpl implements ShopProductRepository {
         );
       }
       return Left(ServerFailure(e.message ?? e.code));
-    } catch (e) {
+    } catch (e, st) {
+      // A StateError (Firestore query assertion), TypeError/FormatException
+      // (legacy-document mapping) or AssertionError never reaches the caller
+      // as itself — it collapses to ServerFailure. Keep the runtime type in
+      // the debug log so it stays distinguishable from a real server error.
+      if (kDebugMode) {
+        debugPrint(
+          '[ShopProductRepository] non-Firebase error on `products` '
+          'type=${e.runtimeType} message=$e\n$st',
+        );
+      }
       return Left(ServerFailure(e.toString()));
     }
   }

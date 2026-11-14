@@ -259,6 +259,7 @@ export 'src/features/catalog_import/domain/production_catalog_dataset.dart';
 export 'src/core/qr/qr_payload_builder.dart';
 export 'src/features/dashboard/domain/services/dashboard_aggregator.dart';
 export 'src/features/employee/domain/value_objects/employee_query_plan.dart';
+export 'src/features/employee/domain/value_objects/employee_page_assembler.dart';
 export 'src/features/repair_order/data/models/repair_order_model.dart';
 export 'src/features/repair_service/data/models/repair_service_model.dart';
 export 'src/features/service_category/data/models/service_category_model.dart';

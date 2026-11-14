@@ -47,7 +47,10 @@ void main() {
     registerFallbackValue(_actor(UserRole.admin));
   });
 
-  group('AssignRepairOrderTechnicianUseCase — Sprint 10 reconfirmation', () {
+  // Permission model (RolePermissions in fixshop_shared): assignRepairOrder is
+  // held by admin / manager / technician. Reception handles intake only
+  // (view / create / update repair orders) and cannot assign a technician.
+  group('AssignRepairOrderTechnicianUseCase — role gating', () {
     late _MockRepairOrderRepository repository;
     late AssignRepairOrderTechnicianUseCase useCase;
 
@@ -56,13 +59,13 @@ void main() {
       useCase = AssignRepairOrderTechnicianUseCase(repository);
     });
 
-    test('technician cannot assign — denied without touching the repository',
+    test('reception cannot assign — denied without touching the repository',
         () async {
       final params = AssignRepairOrderTechnicianParams(
         id: 'order-1',
         technicianId: 'tech-1',
         technicianName: 'Le Van B',
-        actor: _actor(UserRole.technician),
+        actor: _actor(UserRole.reception),
       );
 
       final result = await useCase(params);
@@ -80,7 +83,7 @@ void main() {
           ));
     });
 
-    test('reception can assign', () async {
+    test('technician can assign', () async {
       final order = _order(status: RepairOrderStatus.assigned);
       when(() => repository.assignTechnician(
             any(),
@@ -93,7 +96,7 @@ void main() {
         id: 'order-1',
         technicianId: 'tech-1',
         technicianName: 'Le Van B',
-        actor: _actor(UserRole.reception),
+        actor: _actor(UserRole.technician),
       );
 
       final result = await useCase(params);
@@ -107,23 +110,24 @@ void main() {
           )).called(1);
     });
 
-    test('manager and admin hold assignRepairOrder', () {
-      expect(
-        PermissionResolver.hasPermission(
-            UserRole.manager, Permission.assignRepairOrder),
-        isTrue,
-      );
-      expect(
-        PermissionResolver.hasPermission(
-            UserRole.admin, Permission.assignRepairOrder),
-        isTrue,
-      );
+    test('admin, manager and technician hold assignRepairOrder', () {
+      for (final role in [
+        UserRole.admin,
+        UserRole.manager,
+        UserRole.technician,
+      ]) {
+        expect(
+          PermissionResolver.hasPermission(role, Permission.assignRepairOrder),
+          isTrue,
+          reason: '$role should hold assignRepairOrder',
+        );
+      }
     });
 
-    test('technician does NOT hold assignRepairOrder', () {
+    test('reception does NOT hold assignRepairOrder', () {
       expect(
         PermissionResolver.hasPermission(
-            UserRole.technician, Permission.assignRepairOrder),
+            UserRole.reception, Permission.assignRepairOrder),
         isFalse,
       );
     });

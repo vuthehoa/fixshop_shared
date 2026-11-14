@@ -106,7 +106,7 @@ void main() {
       verifyNever(() => deviceRepository.getDevices(any()));
     });
 
-    test('reception holds manageWarranty and can run the scan', () async {
+    test('an actor with manageWarranty (admin) can run the scan', () async {
       final expiringDevice = _device(
         id: 'device-1',
         warrantyExpiredAt: DateTime.now().add(const Duration(days: 10)),
@@ -125,7 +125,7 @@ void main() {
           (invocation) async => Right(invocation.positionalArguments.first));
 
       final result = await useCase(
-          ScanWarrantyExpiringParams(actor: _actor(UserRole.reception)));
+          ScanWarrantyExpiringParams(actor: _actor(UserRole.admin)));
 
       expect(result.isRight(), isTrue);
       result.fold((_) => fail('expected Right'), (count) => expect(count, 1));
@@ -145,7 +145,7 @@ void main() {
       );
 
       final result = await useCase(
-          ScanWarrantyExpiringParams(actor: _actor(UserRole.manager)));
+          ScanWarrantyExpiringParams(actor: _actor(UserRole.admin)));
 
       expect(result.isRight(), isTrue);
       result.fold((_) => fail('expected Right'), (count) => expect(count, 0));

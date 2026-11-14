@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/error/exceptions.dart';
@@ -67,6 +68,26 @@ class FirebaseShopProductRemoteDataSource
     query = query.orderBy('updatedAt', descending: true).limit(filter.pageSize);
     if (startAfter != null) {
       query = query.startAfterDocument(startAfter);
+    }
+
+    if (kDebugMode) {
+      // The exact server-side query that goes to Firestore — not the raw
+      // ShopProductFilter. All clauses are equality + one orderBy, so this
+      // needs no composite index; anything that fails here is rules or data.
+      debugPrint(
+        '[ProductQueryPlan] collection=products '
+        'publishedOnly=${filter.publishedOnly} '
+        'status=${filter.status?.wireName} '
+        'manufacturerId=${filter.manufacturerId} '
+        'productFamilyId=${filter.productFamilyId} '
+        'modelId=${filter.modelId} '
+        'condition=${filter.condition?.wireName} '
+        'orderBy=updatedAt_desc limit=${filter.pageSize} '
+        'cursor=${startAfter != null} '
+        '(clientSide: search=${filter.searchQuery?.trim().isNotEmpty ?? false} '
+        'minPrice=${filter.minPrice} maxPrice=${filter.maxPrice} '
+        'inStockOnly=${filter.inStockOnly})',
+      );
     }
 
     final snapshot = await query.get();

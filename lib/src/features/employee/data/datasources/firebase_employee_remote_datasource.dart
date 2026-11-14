@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/error/exceptions.dart';
@@ -8,6 +9,8 @@ import '../../../../core/utils/paginated_result.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../domain/value_objects/employee_filter.dart';
+import '../../domain/value_objects/employee_page_assembler.dart';
+import '../../domain/value_objects/employee_query_plan.dart';
 import 'employee_remote_datasource.dart';
 
 class FirebaseEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
@@ -38,23 +41,29 @@ class FirebaseEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
     EmployeeFilter filter, {
     DocumentSnapshot? startAfter,
   }) async {
-    Query<Map<String, dynamic>> query = _users;
+    // A single Firestore-safe query per [EmployeeQueryPlan]: the role
+    // predicate is always POSITIVE (equality or a `whereIn` whitelist of the
+    // employee roles) and only an *explicit* status choice is pushed to the
+    // server, as equality. The default "hide deleted" rule runs client-side.
+    // This guarantees an `in` filter and a `not-in` filter can never coexist
+    // in the same query (the assertion `'!hasNotIn': You cannot use 'in'
+    // filters with 'not-in' filters`).
+    final plan = EmployeeQueryPlan.fromFilter(filter);
 
-    // Role filter — exclude customer accounts from employee list by default
-    if (filter.role != null) {
-      query = query.where('role', isEqualTo: filter.role!.name);
-    } else {
-      query = query.where('role', whereNotIn: [UserRole.customer.name]);
+    if (kDebugMode) {
+      debugPrint('[EmployeeQuery] ${plan.describe(filter.pageSize)}');
     }
 
-    // Status filter — default: show active + disabled (exclude deleted)
-    if (filter.status != null) {
-      query = query.where('status', isEqualTo: filter.status!.name);
-    } else {
-      query = query.where(
-        'status',
-        whereIn: [UserStatus.active.name, UserStatus.disabled.name],
-      );
+    Query<Map<String, dynamic>> query = _users;
+
+    if (plan.roleIsEqualTo != null) {
+      query = query.where('role', isEqualTo: plan.roleIsEqualTo);
+    } else if (plan.usesRoleWhereIn) {
+      query = query.where('role', whereIn: plan.roleWhereIn);
+    }
+
+    if (plan.statusIsEqualTo != null) {
+      query = query.where('status', isEqualTo: plan.statusIsEqualTo);
     }
 
     query = query.orderBy('displayName').limit(filter.pageSize);
@@ -64,24 +73,39 @@ class FirebaseEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
     }
 
     final snapshot = await query.get();
-    final models =
+    var models =
         snapshot.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
 
-    // Client-side text search (Firestore has no native full-text search)
-    final filtered =
-        filter.searchQuery == null || filter.searchQuery!.trim().isEmpty
-            ? models
-            : models.where((m) {
-                final q = filter.searchQuery!.toLowerCase();
-                return m.displayName.toLowerCase().contains(q) ||
-                    m.email.toLowerCase().contains(q) ||
-                    (m.phoneNumber?.toLowerCase().contains(q) ?? false);
-              }).toList();
+    // Client-side: drop default-hidden statuses (e.g. `deleted`). Never a
+    // server `not-in` clause.
+    if (plan.requiresClientSideExclusion) {
+      models = models
+          .where((m) => !plan.clientExcludedStatuses.contains(m.status.name))
+          .toList();
+    }
+
+    // Client-side text search (Firestore has no native full-text search).
+    final rawQuery = filter.searchQuery?.trim().toLowerCase();
+    final filtered = rawQuery == null || rawQuery.isEmpty
+        ? models
+        : models.where((m) {
+            return m.displayName.toLowerCase().contains(rawQuery) ||
+                m.email.toLowerCase().contains(rawQuery) ||
+                (m.phoneNumber?.toLowerCase().contains(rawQuery) ?? false);
+          }).toList();
+
+    final page = assembleEmployeePage(
+      accepted: filtered,
+      pageSize: filter.pageSize,
+      firestoreExhausted: snapshot.docs.length < filter.pageSize,
+    );
 
     return PaginatedResult(
-      items: filtered,
+      items: page.items,
+      // Cursor advances past the last FETCHED doc (even one dropped
+      // client-side), so the next page never re-reads it.
       lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
-      hasMore: snapshot.docs.length == filter.pageSize,
+      hasMore: page.hasMore,
     );
   }
 
@@ -163,8 +187,9 @@ class FirebaseEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
   Future<UserModel> updateEmployee(UserModel employee) async {
     await _users.doc(employee.id).update(employee.toUpdateMap());
     final doc = await _users.doc(employee.id).get();
-    if (!doc.exists)
+    if (!doc.exists) {
       throw NotFoundException('Employee not found after update.');
+    }
     return UserModel.fromFirestore(doc);
   }
 

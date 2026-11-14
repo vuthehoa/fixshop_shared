@@ -15,6 +15,20 @@ class EmployeeFilter extends Equatable {
     this.pageSize = 20,
   });
 
+  /// True when the user picked a specific role (query uses `role ==`).
+  bool get hasRoleFilter => role != null;
+
+  /// True when the user picked a specific status (query uses `status ==`).
+  bool get hasStatusFilter => status != null;
+
+  /// True when there is a non-blank free-text query (applied in Dart).
+  bool get hasTextSearch => (searchQuery?.trim().isNotEmpty) ?? false;
+
+  /// True when the default "hide deleted accounts" rule must run client-side
+  /// — i.e. no explicit status was chosen, so it can't be pushed to the
+  /// server as an equality without risking an `in` + `not-in` combination.
+  bool get requiresClientSideExclusion => status == null;
+
   EmployeeFilter copyWith({
     String? searchQuery,
     UserRole? role,

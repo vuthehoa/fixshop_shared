@@ -194,6 +194,7 @@ export 'src/features/repair_order/domain/entities/repair_order_entity.dart';
 export 'src/features/repair_order/domain/entities/repair_order_timeline_entry.dart';
 export 'src/features/repair_order/domain/repositories/repair_order_repository.dart';
 export 'src/features/repair_order/domain/services/repair_order_status_transition_service.dart';
+export 'src/features/repair_order/domain/services/repair_order_role_policy.dart';
 export 'src/features/repair_order/domain/usecases/assign_repair_order_technician_usecase.dart';
 export 'src/features/repair_order/domain/usecases/cancel_repair_order_usecase.dart';
 export 'src/features/repair_order/domain/usecases/change_repair_order_status_usecase.dart';

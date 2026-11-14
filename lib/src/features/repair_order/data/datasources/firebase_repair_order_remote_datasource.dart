@@ -155,7 +155,12 @@ class FirebaseRepairOrderRemoteDataSource
       updatedAt: now,
     );
 
-    await ref.set(created.toFirestore());
+    // Rules (isValidStaffRepairOrderCreate) require server-clock stamps.
+    await ref.set({
+      ...created.toFirestore(),
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
     return created;
   }
 

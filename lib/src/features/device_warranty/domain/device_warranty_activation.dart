@@ -77,14 +77,64 @@ abstract final class DeviceWarrantyActivation {
     return t.length >= reasonMin && t.length <= reasonMax;
   }
 
+  /// The service categories a warranty can be activated for on [order] (raw
+  /// Firestore map), one per distinct category, in stored order:
+  /// - multi-service order (`serviceItems`, contract v1): one target per
+  ///   item's `categoryId` (items without a category are skipped);
+  /// - legacy order: the `serviceSnapshot` category, if any.
+  /// Empty ⇒ the order has no recorded service (staff picks a category).
+  static List<WarrantyServiceTarget> serviceTargets(
+      Map<String, dynamic>? order) {
+    if (order == null) return const [];
+    final snap =
+        (order['serviceSnapshot'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final raw = order['serviceItems'];
+    final targets = <WarrantyServiceTarget>[];
+    final seen = <String>{};
+    if (raw is List) {
+      for (final (i, item) in raw.whereType<Map>().indexed) {
+        final cat = _s(item['categoryId']);
+        if (cat.isEmpty || !seen.add(cat)) continue;
+        targets.add(WarrantyServiceTarget(
+          categoryId: cat,
+          categoryName: _first([
+            item['serviceName'],
+            if (i == 0) snap['categoryName'],
+            cat,
+          ]),
+          partLabel: _orNull(item['variantName']),
+          itemIndex: i,
+        ));
+      }
+    }
+    if (targets.isNotEmpty) return targets;
+    final cat = _s(snap['categoryId']);
+    if (cat.isEmpty) return const [];
+    return [
+      WarrantyServiceTarget(
+        categoryId: cat,
+        categoryName: _first([snap['categoryName'], cat]),
+        partLabel: _orNull(snap['variantName']),
+        itemIndex: 0,
+      ),
+    ];
+  }
+
   /// Validates a repair order (raw Firestore map) for activation and resolves
   /// the warranted service. Returns a [WarrantySkipReason] or the plan.
+  ///
+  /// [itemCategoryId] selects one service line of a multi-service order
+  /// (`serviceItems[i].categoryId`); each line gets its own deterministic
+  /// record `<repairOrderId>__<categoryId>`. A category that is not on the
+  /// order is rejected ([WarrantySkipReason.missingService]). Ignored for
+  /// orders without `serviceItems` (legacy behaviour unchanged).
   static ActivationCheck check({
     required String repairOrderId,
     required Map<String, dynamic>? order,
     String? fallbackCategoryId,
     String? fallbackCategoryName,
     String? fallbackPartLabel,
+    String? itemCategoryId,
   }) {
     if (order == null) {
       return const ActivationCheck.skip(WarrantySkipReason.orderNotFound);
@@ -102,6 +152,26 @@ abstract final class DeviceWarrantyActivation {
     final deviceId = _s(order['deviceId']);
     if (deviceId.isEmpty) {
       return const ActivationCheck.skip(WarrantySkipReason.missingDevice);
+    }
+    final wanted = _s(itemCategoryId);
+    if (wanted.isNotEmpty && order['serviceItems'] is List) {
+      final targets = serviceTargets(order);
+      final hit = targets.where((t) => t.categoryId == wanted);
+      if (targets.isNotEmpty) {
+        if (hit.isEmpty) {
+          return const ActivationCheck.skip(WarrantySkipReason.missingService);
+        }
+        final t = hit.first;
+        return ActivationCheck._(
+          skip: null,
+          warrantyId: docId(repairOrderId, t.categoryId),
+          customerId: customerId,
+          deviceId: deviceId,
+          categoryId: t.categoryId,
+          categoryName: t.categoryName,
+          partLabel: t.partLabel,
+        );
+      }
     }
     final snap =
         (order['serviceSnapshot'] as Map?)?.cast<String, dynamic>() ?? const {};
@@ -185,6 +255,37 @@ abstract final class DeviceWarrantyActivation {
     }
     return '';
   }
+}
+
+/// One warrantable service line of an order (see
+/// [DeviceWarrantyActivation.serviceTargets]).
+class WarrantyServiceTarget {
+  final String categoryId;
+  final String categoryName;
+  final String? partLabel;
+
+  /// Index of the first `serviceItems` entry with this category (0 for a
+  /// legacy order).
+  final int itemIndex;
+
+  const WarrantyServiceTarget({
+    required this.categoryId,
+    required this.categoryName,
+    required this.partLabel,
+    required this.itemIndex,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is WarrantyServiceTarget &&
+      other.categoryId == categoryId &&
+      other.categoryName == categoryName &&
+      other.partLabel == partLabel &&
+      other.itemIndex == itemIndex;
+
+  @override
+  int get hashCode =>
+      Object.hash(categoryId, categoryName, partLabel, itemIndex);
 }
 
 enum WarrantySkipReason {

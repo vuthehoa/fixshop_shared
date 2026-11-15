@@ -132,6 +132,28 @@ class RepairOrderEntity extends Equatable {
   final String? pickupAddress;
   final String? storeAddress;
 
+  // ── Multi-service booking (MULTI_SERVICE_BOOKING_CONTRACT v1) ─────────
+  /// `serviceItems` exactly as stored (parsed defensively), or `null` when
+  /// the document has none (legacy single-service / CMS / walk-in order).
+  /// Never synthesised on write: use [serviceLines] to display.
+  final List<BookingServiceItem>? serviceItems;
+
+  /// `booking_receipts/{receiptKey}` written in the same batch (64 hex).
+  final String? receiptKey;
+
+  /// Every service line of the order, for display: `serviceItems` when
+  /// present, otherwise ONE line derived from `serviceSnapshot` (legacy
+  /// behaviour), otherwise empty (CMS/walk-in order without a booking).
+  List<BookingServiceItem> get serviceLines {
+    final items = serviceItems;
+    if (items != null && items.isNotEmpty) return items;
+    final snap = serviceSnapshot;
+    return snap == null ? const [] : [BookingServiceItem.fromSnapshot(snap)];
+  }
+
+  /// True when the order carries 2+ services.
+  bool get isMultiService => (serviceItems?.length ?? 0) > 1;
+
   /// True for a booking created by an unauthenticated guest — `source` is
   /// the customer app AND no customer profile is attached. Not an error
   /// state; the CMS surfaces it as a light "Khách chưa đăng nhập" label.
@@ -190,6 +212,8 @@ class RepairOrderEntity extends Equatable {
     this.fulfillmentMethod,
     this.pickupAddress,
     this.storeAddress,
+    this.serviceItems,
+    this.receiptKey,
   });
 
   bool get isCancelled => currentStatus == RepairOrderStatus.cancelled;
@@ -252,6 +276,8 @@ class RepairOrderEntity extends Equatable {
     RepairFulfillmentMethod? fulfillmentMethod,
     String? pickupAddress,
     String? storeAddress,
+    List<BookingServiceItem>? serviceItems,
+    String? receiptKey,
   }) {
     return RepairOrderEntity(
       id: id ?? this.id,
@@ -306,6 +332,8 @@ class RepairOrderEntity extends Equatable {
       fulfillmentMethod: fulfillmentMethod ?? this.fulfillmentMethod,
       pickupAddress: pickupAddress ?? this.pickupAddress,
       storeAddress: storeAddress ?? this.storeAddress,
+      serviceItems: serviceItems ?? this.serviceItems,
+      receiptKey: receiptKey ?? this.receiptKey,
     );
   }
 
@@ -362,5 +390,7 @@ class RepairOrderEntity extends Equatable {
         fulfillmentMethod,
         pickupAddress,
         storeAddress,
+        serviceItems,
+        receiptKey,
       ];
 }

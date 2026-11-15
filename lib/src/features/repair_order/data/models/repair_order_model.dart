@@ -61,6 +61,8 @@ class RepairOrderModel extends RepairOrderEntity {
     super.fulfillmentMethod,
     super.pickupAddress,
     super.storeAddress,
+    super.serviceItems,
+    super.receiptKey,
   });
 
   static DateTime? _date(dynamic value) => (value as Timestamp?)?.toDate();
@@ -164,6 +166,9 @@ class RepairOrderModel extends RepairOrderEntity {
           data['fulfillmentMethod'] as String?),
       pickupAddress: data['pickupAddress'] as String?,
       storeAddress: data['storeAddress'] as String?,
+      serviceItems: BookingServiceItem.listFromFirestore(data['serviceItems']),
+      receiptKey:
+          data['receiptKey'] is String ? data['receiptKey'] as String : null,
     );
   }
 
@@ -220,6 +225,8 @@ class RepairOrderModel extends RepairOrderEntity {
       fulfillmentMethod: entity.fulfillmentMethod,
       pickupAddress: entity.pickupAddress,
       storeAddress: entity.storeAddress,
+      serviceItems: entity.serviceItems,
+      receiptKey: entity.receiptKey,
     );
   }
 
@@ -314,6 +321,11 @@ class RepairOrderModel extends RepairOrderEntity {
         'fulfillmentMethod': fulfillmentMethod!.wireName,
       if (pickupAddress != null) 'pickupAddress': pickupAddress,
       if (storeAddress != null) 'storeAddress': storeAddress,
+      // Preserved verbatim when the order has them; never synthesised for a
+      // legacy order (old readers rely on their absence).
+      if (serviceItems != null)
+        'serviceItems': serviceItems!.map((i) => i.toMap()).toList(),
+      if (receiptKey != null) 'receiptKey': receiptKey,
     };
   }
 

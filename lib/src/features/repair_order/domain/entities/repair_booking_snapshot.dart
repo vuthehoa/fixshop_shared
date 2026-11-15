@@ -281,3 +281,118 @@ class BookingAppointmentSnapshot extends Equatable {
   List<Object?> get props =>
       [date, slotId, slotStart, slotEnd, slotDisplayLabel];
 }
+
+/// One service line of a booking — `repair_orders.serviceItems[i]` from the
+/// multi-service contract (`MULTI_SERVICE_BOOKING_CONTRACT.md` §1/§7).
+///
+/// Parsing is DEFENSIVE (§7): Rules type-check item 0 only, so any label that
+/// is not a string reads as `''` and any price that is not a number reads as
+/// `0`. [lineTotal] falls back to [basePrice] when absent.
+class BookingServiceItem extends Equatable {
+  final String serviceId;
+  final String categoryId;
+  final String serviceName;
+  final String variantCode;
+  final String variantName;
+  final int basePrice;
+  final List<BookingAddonSnapshot> selectedAddons;
+  final int? warrantyMonths;
+  final int lineTotal;
+
+  const BookingServiceItem({
+    required this.serviceId,
+    required this.categoryId,
+    required this.serviceName,
+    required this.variantCode,
+    required this.variantName,
+    required this.basePrice,
+    this.selectedAddons = const [],
+    this.warrantyMonths,
+    required this.lineTotal,
+  });
+
+  static String _str(Object? v) => v is String ? v : '';
+  static int? _int(Object? v) => v is num ? v.toInt() : null;
+
+  factory BookingServiceItem.fromMap(Map<String, dynamic> map) {
+    final base = _int(map['basePrice']) ?? 0;
+    final rawAddons = map['selectedAddons'];
+    return BookingServiceItem(
+      serviceId: _str(map['serviceId']),
+      categoryId: _str(map['categoryId']),
+      serviceName: _str(map['serviceName']),
+      variantCode: _str(map['variantCode']),
+      variantName: _str(map['variantName']),
+      basePrice: base,
+      selectedAddons: rawAddons is List
+          ? rawAddons
+              .whereType<Map>()
+              .map((a) => BookingAddonSnapshot(
+                    code: _str(a['code']),
+                    name: _str(a['name']),
+                    price: _int(a['price']) ?? 0,
+                  ))
+              .toList()
+          : const [],
+      warrantyMonths: _int(map['warrantyMonths']),
+      lineTotal: _int(map['lineTotal']) ?? base,
+    );
+  }
+
+  /// The single line a legacy order (no `serviceItems`) is shown as — built
+  /// from `serviceSnapshot`, priced at its `estimatedPrice` (old behaviour).
+  factory BookingServiceItem.fromSnapshot(BookingServiceSnapshot s) {
+    return BookingServiceItem(
+      serviceId: s.serviceId,
+      categoryId: s.categoryId,
+      serviceName: s.categoryName,
+      variantCode: s.variantCode,
+      variantName: s.variantName,
+      basePrice: s.basePrice,
+      selectedAddons: s.selectedAddons,
+      lineTotal: s.estimatedPrice,
+    );
+  }
+
+  /// Parses `repair_orders.serviceItems`. Returns `null` when the field is
+  /// absent, not a list, or holds no map — the caller then falls back to
+  /// `serviceSnapshot` (legacy single-service order). Non-map elements are
+  /// skipped; stored order is kept.
+  static List<BookingServiceItem>? listFromFirestore(Object? raw) {
+    if (raw is! List) return null;
+    final items = raw
+        .whereType<Map>()
+        .map((m) => BookingServiceItem.fromMap(m.cast<String, dynamic>()))
+        .toList();
+    return items.isEmpty ? null : List.unmodifiable(items);
+  }
+
+  int get addonsTotal => selectedAddons.fold(0, (total, a) => total + a.price);
+
+  Map<String, dynamic> toMap() {
+    return {
+      'serviceId': serviceId,
+      'categoryId': categoryId,
+      'serviceName': serviceName,
+      'variantCode': variantCode,
+      'variantName': variantName,
+      'basePrice': basePrice,
+      'selectedAddons': selectedAddons.map((a) => a.toMap()).toList(),
+      if (warrantyMonths != null) 'warrantyMonths': warrantyMonths,
+      'lineTotal': lineTotal,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        serviceId,
+        categoryId,
+        serviceName,
+        variantCode,
+        variantName,
+        basePrice,
+        selectedAddons,
+        warrantyMonths,
+        lineTotal,
+      ];
+}

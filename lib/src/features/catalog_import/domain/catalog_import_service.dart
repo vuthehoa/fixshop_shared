@@ -16,6 +16,7 @@ import '../../repair_service/domain/entities/repair_service_addon_entity.dart';
 import '../../repair_service/domain/entities/repair_service_variant_entity.dart';
 import '../../repair_service/domain/repositories/repair_service_repository.dart';
 import '../../repair_service/domain/services/catalog_eligibility.dart';
+import '../../repair_service/domain/services/catalog_model_offers.dart';
 import '../../repair_service/domain/value_objects/repair_service_filter.dart';
 import '../../repair_service/domain/value_objects/repair_service_write_context.dart';
 import '../../auth/domain/entities/user_entity.dart';
@@ -261,10 +262,14 @@ class CatalogImportService {
     // Every service write syncs catalog_eligibility in the same batch
     // (source = 'import'); with a known actor role, price changes on rerun
     // are also audited in the same transaction.
+    // Latest model-summary size per model (catalog_model_offers sync).
+    final bookableByModel = <String, int>{};
     final writeContext = RepairServiceWriteContext(
       source: CatalogEligibilitySource.importer,
       actorId: createdBy,
       actorRole: actorRole,
+      onModelOffersSynced: (r) =>
+          bookableByModel[r.modelId] = r.bookableServices,
     );
 
     try {
@@ -342,7 +347,14 @@ class CatalogImportService {
         }
       }
 
-      return Right(ServiceImportOutcome(created: created, updated: updated));
+      return Right(ServiceImportOutcome(
+        created: created,
+        updated: updated,
+        modelsOverTechnicalMax: {
+          for (final e in bookableByModel.entries)
+            if (e.value > kServiceItemsTechnicalMax) e.key: e.value,
+        },
+      ));
     } on _FailureSignal catch (e) {
       return Left(e.failure);
     }
@@ -456,7 +468,16 @@ class CategoryImportOutcome {
 class ServiceImportOutcome {
   final int created;
   final int updated;
-  const ServiceImportOutcome({required this.created, required this.updated});
+
+  /// Models whose bookable services exceed the rules' technical bound
+  /// ([kServiceItemsTechnicalMax]) after the import: modelId → count. The
+  /// import still succeeds; the CMS shows this as a warning to the admin.
+  final Map<String, int> modelsOverTechnicalMax;
+  const ServiceImportOutcome({
+    required this.created,
+    required this.updated,
+    this.modelsOverTechnicalMax = const {},
+  });
 }
 
 T? _findFirst<T>(List<T> items, bool Function(T) test) {

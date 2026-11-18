@@ -14,6 +14,11 @@ abstract final class FirestoreConstants {
   /// SAME batch as every service write — see catalog_eligibility.dart.
   static const String catalogEligibility = 'catalog_eligibility';
 
+  /// Per-MODEL booking summary `{modelId, offers: {serviceId: {variantCode:
+  /// price}}}`, recomputed in the SAME transaction as every service write —
+  /// see catalog_model_offers.dart.
+  static const String catalogModelOffers = 'catalog_model_offers';
+
   // ── Devices ───────────────────────────────────────────────────────────────
   static const String devices = 'devices';
 

@@ -232,6 +232,7 @@ export 'src/features/repair_service/domain/usecases/update_repair_service_usecas
 export 'src/features/repair_service/domain/value_objects/repair_service_filter.dart';
 export 'src/features/repair_service/domain/value_objects/repair_service_write_context.dart';
 export 'src/features/repair_service/domain/services/catalog_eligibility.dart';
+export 'src/features/repair_service/domain/services/catalog_model_offers.dart';
 export 'src/features/service_category/data/datasources/firebase_service_category_remote_datasource.dart';
 export 'src/features/service_category/data/datasources/service_category_remote_datasource.dart';
 export 'src/features/service_category/data/repositories/service_category_repository_impl.dart';
@@ -267,6 +268,7 @@ export 'src/features/employee/domain/value_objects/employee_page_assembler.dart'
 export 'src/features/repair_order/data/models/repair_order_model.dart';
 export 'src/features/repair_service/data/models/repair_service_model.dart';
 export 'src/features/repair_service/data/models/catalog_eligibility_model.dart';
+export 'src/features/repair_service/data/models/catalog_model_offers_model.dart';
 export 'src/features/service_category/data/models/service_category_model.dart';
 export 'src/features/product/data/models/shop_product_model.dart';
 export 'src/features/device_warranty/domain/device_warranty_activation.dart';

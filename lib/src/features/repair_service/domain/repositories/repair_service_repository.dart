@@ -20,9 +20,10 @@ abstract class RepairServiceRepository {
   Future<Either<Failure, List<RepairServiceEntity>>> getActiveRepairServices(
       {String? parentId});
 
-  /// Writes also sync `catalog_eligibility/{id}` in the same batch; see
-  /// [RepairServiceWriteContext] for the eligibility `source` and the
-  /// same-transaction price audit log.
+  /// Writes also sync `catalog_eligibility/{id}` and the per-model summary
+  /// `catalog_model_offers/{modelId}` in the same transaction; see
+  /// [RepairServiceWriteContext] for the eligibility `source`, the
+  /// same-transaction price audit log and the model-summary sync callback.
   Future<Either<Failure, RepairServiceEntity>> createRepairService(
     RepairServiceEntity entity, {
     RepairServiceWriteContext context = const RepairServiceWriteContext(),
